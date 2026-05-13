@@ -3,11 +3,7 @@
 YZTA 2026 DATATHON - BILISSEL PERFORMANS SKORU TAHMINI
 Final Pipeline (v5 + TabNet)
 
-Takim:    Datathon Takim 52
-Public LB: 1.20316 (1. sira)
-OOF RMSE:  1.21181
-OOF R^2:   0.70516
-================================================================================
+
 
 YAKLASIM OZETI:
   1. Veri temizleme (Turkce/Ingilizce karisik ulke ve meslek isimleri normalize edilir)
@@ -31,11 +27,7 @@ YAKLASIM OZETI:
 ON KOSUL:
   - Adversarial validation AUC = 0.509 (train-test ayni dagilimda) -> PL guvenli
 
-CALISMA SURESI: ~35-45 dakika (Kaggle CPU notebook)
 
-KAGGLE PATH AYARLARI:
-  INPUT_DIR'i kendi dataset path'inize gore ayarlayin.
-  Cikti: /kaggle/working/submission.csv
 ================================================================================
 """
 
