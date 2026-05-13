@@ -1,0 +1,18 @@
+# caches / artifacts
+__pycache__/
+*.pyc
+*.npy
+
+# scratch / exploration scripts (not part of final solution)
+_*.py
+FINAL_PIPELINE_V15.py
+FINAL_V16_LAST_SHOT.py
+FINAL_RAPOR.md
+CONTEXT_FOR_NEXT_CHAT.md
+
+# old / intermediate submissions
+submission_v*.csv
+
+# OS
+.DS_Store
+Thumbs.db
