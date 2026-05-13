@@ -1,29 +1,29 @@
 """
 ================================================================================
-COGNITIVE PERFORMANCE PREDICTION - FINAL SOLUTION
+BILISSEL PERFORMANS TAHMINI - FINAL COZUM
 ================================================================================
-Approach: NaN-aware Nearest Neighbor + Hungarian (Optimal Bipartite) Assignment
-Output:  submission.csv
+Yaklasim: NaN-duyarli En Yakin Komsu + Hungarian (Optimal Iki Parcali) Esleme
+Cikti:    submission.csv
 ================================================================================
 
-Pipeline:
-  1) Encode features  : turkish->english category mapping for SHD compatibility
-  2) NaN-aware NN     : mask-based distance, normalized by valid dimensions
-  3) k=30 candidates  : per query row (train+test combined)
-  4) Hungarian LSA    : optimal 1-to-1 bipartite assignment (scipy sparse)
-  5) Prediction       : y_pred = SHD.cognitive_performance / 10
+Is Akisi:
+  1) Ozellik kodlama   : SHD uyumlulugu icin Turkce->Ingilizce kategori esleme
+  2) NaN-duyarli NN    : maske tabanli uzaklik, gecerli boyutlara gore normalize
+  3) k=30 aday         : sorgu satiri basina (train+test birlikte)
+  4) Hungarian LSA     : optimal bire bir iki parcali esleme (scipy seyrek yapi)
+  5) Tahmin            : y_pred = SHD.cognitive_performance / 10
 
-Why this works:
-  - SHD dataset (100K rows) is the LEAK source for target labels
-  - Train/test have noisy/incomplete versions of SHD's columns
-  - Each query maps to exactly 1 SHD row -> Hungarian ensures global optimality
-  - NaN-aware distance handles ~3% missing values in train/test
+Neden ise yariyor:
+  - SHD veri seti (100K satir) hedef etiketler icin LEAK kaynagini olusturur
+  - Train/test, SHD sutunlarinin gurultulu ve eksik surumlerini icerir
+  - Her sorgu tam olarak 1 SHD satirina eslenir -> Hungarian global optimumu saglar
+  - NaN-duyarli uzaklik, train/test icindeki yaklasik %3 eksik degeri yonetir
 
-Local CV (5-fold Train OOF RMSE):
-  - Plain 1-NN              : 0.2315
-  - Greedy bipartite k=5    : 0.1925
-  - Greedy bipartite k=30   : 0.1911
-  - Hungarian k=30  (USED)  : 0.1826
+Yerel CV (5-fold Train OOF RMSE):
+  - Duz 1-NN                : 0.2315
+  - Acgozlu iki parcali k=5 : 0.1925
+  - Acgozlu iki parcali k=30: 0.1911
+  - Hungarian k=30 (KULLANILAN): 0.1826
 ================================================================================
 """
 
@@ -39,10 +39,10 @@ from scipy.sparse.csgraph import min_weight_full_bipartite_matching
 warnings.filterwarnings("ignore")
 
 # ------------------------------------------------------------------ #
-# Config
+# Yapilandirma
 # ------------------------------------------------------------------ #
 K = 30           # nearest neighbours per query
-W_CAT = 1.7      # weight of one-hot category dimensions vs numeric
+W_CAT = 1.7      # one-hot kategorik boyutlarin sayisallara gore agirligi
 SEED = 42
 
 DATA_DIR  = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +52,7 @@ SHD_CSV   = os.path.join(DATA_DIR, "sleep_health_dataset (1).csv")
 OUT_CSV   = os.path.join(DATA_DIR, "submission.csv")
 
 # ------------------------------------------------------------------ #
-# Column mappings  (Turkish train/test  <-->  English SHD)
+# Sutun eslemeleri (Turkce train/test <--> Ingilizce SHD)
 # ------------------------------------------------------------------ #
 NUM_MAP = {
     "yas": "age",
@@ -100,10 +100,10 @@ SEASON_EX = {"Spring": "SP-SU", "Summer": "SP-SU",
 
 
 # ------------------------------------------------------------------ #
-# Helpers
+# Yardimci Fonksiyonlar
 # ------------------------------------------------------------------ #
 def get_cat_arrays(df, is_shd=False):
-    """Return list of 7 category arrays for a dataframe (NaN preserved)."""
+    """Bir veri cercevesi icin 7 kategorik dizi dondurur (NaN korunur)."""
     if not is_shd:
         return [
             df["cinsiyet"].map(CINSIYET).values,
@@ -126,7 +126,7 @@ def get_cat_arrays(df, is_shd=False):
 
 
 def encode_categories(tr_cats, te_cats, ex_cats):
-    """Fit LabelEncoders on union of seen values, transform each."""
+    """Gorulen degerlerin birlesimi uzerinde LabelEncoder egitir ve donusturur."""
     tr_enc, te_enc, ex_enc = [], [], []
     tr_isna, te_isna = [], []
     n_cats_per = []
@@ -154,7 +154,7 @@ def encode_categories(tr_cats, te_cats, ex_cats):
 
 
 def onehot_with_nan(enc, isna, n_cats):
-    """One-hot encoding; rows with NaN get all-zero vector."""
+    """One-hot kodlama; NaN iceren satirlar tamamen sifir vektor alir."""
     oh = np.zeros((len(enc), n_cats), dtype=np.float64)
     valid = ~isna
     if valid.any():
@@ -164,11 +164,11 @@ def onehot_with_nan(enc, isna, n_cats):
 
 def build_feature_matrix(num_arr, num_isna, ex_med, ex_std,
                          cat_enc, cat_isna, n_cats_per):
-    """Concatenate normalized numerics + scaled one-hot categories."""
-    # numerics: median-impute + z-score
+    """Normalize sayisallari ve one-hot kategorikleri birlestirir."""
+    # Sayisal degiskenler: medyan ile doldurma + z-skoru
     n = np.where(num_isna, ex_med, num_arr)
     n = (n - ex_med) / ex_std
-    # categoricals (one-hot, NaN-aware)
+    # Kategorik degiskenler (one-hot, NaN-duyarli)
     ohs = [onehot_with_nan(cat_enc[i], cat_isna[i], n_cats_per[i])
            for i in range(7)]
     cat_part = np.hstack(ohs) * (W_CAT / np.sqrt(2))
@@ -176,7 +176,7 @@ def build_feature_matrix(num_arr, num_isna, ex_med, ex_std,
 
 
 def build_mask(num_isna, cat_isna, n_cats_per):
-    """Binary mask for NaN-aware distance (1=valid, 0=missing)."""
+    """NaN-duyarli uzaklik icin ikili maske olusturur (1=gecerli, 0=eksik)."""
     parts = [(~num_isna).astype(np.float64)]
     for i in range(7):
         m = (~cat_isna[i]).astype(np.float64)
@@ -185,11 +185,11 @@ def build_mask(num_isna, cat_isna, n_cats_per):
 
 
 def nan_aware_knn(query, qmask, ref, k=30, chunk=1500):
-    """NaN-aware k-NN using mask-weighted Euclidean distance.
+    """Maske agirlikli Oklid uzakligi kullanan NaN-duyarli k-NN.
 
-    For each query row q with mask m and ref row r:
+    Her maske m'ye sahip sorgu satiri q ve referans satiri r icin:
         d2(q, r) = sum_i m_i * (q_i - r_i)^2
-        normalized: d2 * D / sum(m_i)
+        normalize edilmis hali: d2 * D / sum(m_i)
     """
     n_q, D = query.shape[0], ref.shape[1]
     out_d = np.zeros((n_q, k), dtype=np.float32)
@@ -217,9 +217,9 @@ def nan_aware_knn(query, qmask, ref, k=30, chunk=1500):
 
 
 def hungarian_assignment(all_idx, all_d, n_ex):
-    """Optimal 1-to-1 assignment between queries and SHD rows.
+    """Sorgular ile SHD satirlari arasinda optimal bire bir esleme yapar.
 
-    Sparse cost: only top-K candidates per query are considered.
+    Seyrek maliyet matrisi: sorgu basina yalnizca ilk K aday kullanilir.
     """
     n_q, k = all_idx.shape
     rows = np.repeat(np.arange(n_q), k)
@@ -238,16 +238,16 @@ def hungarian_assignment(all_idx, all_d, n_ex):
 
 
 # ------------------------------------------------------------------ #
-# Pipeline
+# Is Akisi
 # ------------------------------------------------------------------ #
 def main():
     t0 = time.time()
     print("=" * 70)
-    print("Cognitive Performance Prediction - Hungarian NN Solution")
+    print("Bilissel Performans Tahmini - Hungarian NN Cozumu")
     print("=" * 70)
 
-    # ---- 1. Load
-    print("\n[1/6] Loading data...")
+    # ---- 1. Veriyi yukleme
+    print("\n[1/6] Veri yukleniyor...")
     train = pd.read_csv(TRAIN_CSV)
     test  = pd.read_csv(TEST_CSV)
     shd   = pd.read_csv(SHD_CSV)
@@ -255,15 +255,15 @@ def main():
     y_ex    = shd["cognitive_performance_score"].values / 10.0
     print(f"  train={len(train)}  test={len(test)}  shd={len(shd)}")
 
-    # ---- 2. Encode categoricals
-    print("\n[2/6] Encoding features...")
+    # ---- 2. Kategorik degiskenleri kodlama
+    print("\n[2/6] Ozellikler kodlaniyor...")
     tr_cats = get_cat_arrays(train)
     te_cats = get_cat_arrays(test)
     ex_cats = get_cat_arrays(shd, is_shd=True)
     tr_enc, te_enc, ex_enc, tr_isna_c, te_isna_c, n_cats_per = \
         encode_categories(tr_cats, te_cats, ex_cats)
 
-    # numeric values & NaN masks
+    # Sayisal degerler ve NaN maskeleri
     ex_num = shd[NUM_COLS_EX].values.astype(float)
     tr_num = train[NUM_COLS_TR].values.astype(float)
     te_num = test[NUM_COLS_TR].values.astype(float)
@@ -271,9 +271,9 @@ def main():
     ex_med = np.nanmedian(ex_num, axis=0)
     ex_std = np.nanstd(ex_num, axis=0)
 
-    # ---- 3. Build matrices
-    print("\n[3/6] Building feature matrices...")
-    # SHD has no NaN -> create all-zero NaN masks
+    # ---- 3. Ozellik matrislerini olusturma
+    print("\n[3/6] Ozellik matrisleri olusturuluyor...")
+    # SHD tarafinda NaN yok -> tamamen sifir NaN maskeleri olustur
     ex_isna_n = np.zeros_like(ex_num, dtype=bool)
     ex_isna_c = [np.zeros(len(shd), dtype=bool) for _ in range(7)]
 
@@ -286,38 +286,38 @@ def main():
 
     mask_tr = build_mask(tr_isna_n, tr_isna_c, n_cats_per)
     mask_te = build_mask(te_isna_n, te_isna_c, n_cats_per)
-    print(f"  feature dim: {ex_X.shape[1]}  ({tr_X.shape[1] - sum(n_cats_per)} numeric + {sum(n_cats_per)} one-hot)")
+    print(f"  ozellik boyutu: {ex_X.shape[1]}  ({tr_X.shape[1] - sum(n_cats_per)} sayisal + {sum(n_cats_per)} one-hot)")
 
-    # ---- 4. NaN-aware k-NN
-    print(f"\n[4/6] NaN-aware k-NN (k={K})...")
-    print("  train queries...", end=" ", flush=True)
+    # ---- 4. NaN-duyarli k-NN
+    print(f"\n[4/6] NaN-duyarli k-NN (k={K})...")
+    print("  train sorgulari...", end=" ", flush=True)
     d_tr, idx_tr = nan_aware_knn(tr_X, mask_tr, ex_X, k=K)
-    print(f"done ({time.time()-t0:.0f}s)")
-    print("  test queries... ", end=" ", flush=True)
+    print(f"tamam ({time.time()-t0:.0f}s)")
+    print("  test sorgulari... ", end=" ", flush=True)
     d_te, idx_te = nan_aware_knn(te_X, mask_te, ex_X, k=K)
-    print(f"done ({time.time()-t0:.0f}s)")
+    print(f"tamam ({time.time()-t0:.0f}s)")
 
-    # ---- 5. Hungarian optimal assignment
-    print("\n[5/6] Hungarian (optimal bipartite) assignment...")
+    # ---- 5. Hungarian optimal esleme
+    print("\n[5/6] Hungarian (optimal iki parcali) esleme...")
     all_idx = np.concatenate([idx_tr, idx_te], axis=0)
     all_d   = np.concatenate([d_tr,   d_te],   axis=0)
     pick = hungarian_assignment(all_idx, all_d, n_ex=len(shd))
 
     pred_tr = y_ex[pick[:len(train)]]
     oof = np.sqrt(np.mean((y_train - pred_tr) ** 2))
-    print(f"  Train RMSE (in-sample on this pick): {oof:.4f}")
+    print(f"  Train RMSE (bu esleme uzerinde orneklem ici): {oof:.4f}")
 
-    # ---- 6. Save submission
-    print("\n[6/6] Writing submission...")
+    # ---- 6. Submission kaydetme
+    print("\n[6/6] Submission dosyasi yaziliyor...")
     pred_te = np.clip(y_ex[pick[len(train):]], 0, 10)
     submission = pd.DataFrame({
         "id": test["id"],
         "bilissel_performans_skoru": pred_te,
     })
     submission.to_csv(OUT_CSV, index=False)
-    print(f"  Saved: {OUT_CSV}  ({len(submission)} rows)")
-    print(f"  pred mean={pred_te.mean():.3f}  std={pred_te.std():.3f}")
-    print(f"\nTotal runtime: {(time.time()-t0)/60:.1f} min")
+    print(f"  Kaydedildi: {OUT_CSV}  ({len(submission)} satir)")
+    print(f"  tahmin ort={pred_te.mean():.3f}  std={pred_te.std():.3f}")
+    print(f"\nToplam calisma suresi: {(time.time()-t0)/60:.1f} dk")
     print("=" * 70)
 
 
