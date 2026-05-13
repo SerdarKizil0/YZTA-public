@@ -1,5 +1,6 @@
 Bilişsel Performans Tahmini
-Bu depo, uyku ve yaşam tarzı özelliklerinden bilissel_performans_skoru değerini tahmin etmeyi amaçlayan Kaggle yarışması için geliştirilmiş çözüm dosyasını içermektedir.
+
+Uyku ve yaşam tarzı özelliklerinden bilissel_performans_skoru değerini tahmin etmeyi amaçlayan Kaggle yarışması için geliştirilmiş çözüm dosyasını içermektedir.
 
 Yaklaşım
 Bu çözümde, klasik bir makine öğrenmesi regresyon modeli eğitmek yerine yüksek doğruluğa sahip bir benzerlik eşleştirme (similarity matching) algoritması tasarlanmıştır. Dış veri kaynağı olarak sağlanan sleep_health_dataset.csv (SHD, 100.000 satır), tahmin gücünü artırmak için geniş bir referans havuzu (büyük veri uzayı) olarak değerlendirilmiştir.
